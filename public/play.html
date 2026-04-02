@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play Game</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #0b1020;
+      color: white;
+      min-height: 100vh;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.03);
+    }
+    .topbar a {
+      color: #8ecbff;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .topbar h1 {
+      font-size: 20px;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 20px;
+      padding: 20px;
+      align-items: start;
+    }
+    .game-shell {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .game-frame-wrap {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+    iframe {
+      width: 420px;
+      height: 680px;
+      border: none;
+      background: #000;
+      border-radius: 12px;
+      box-shadow: 0 0 40px rgba(0,0,0,0.35);
+    }
+    .sidebar {
+      display: grid;
+      gap: 16px;
+    }
+    .card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .card h2 {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    .muted {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .score {
+      font-size: 28px;
+      font-weight: 700;
+      color: #ffd166;
+      margin-top: 6px;
+    }
+    ul {
+      padding-left: 18px;
+      color: rgba(255,255,255,0.85);
+    }
+    li { margin-bottom: 8px; }
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        order: -1;
+      }
+      .game-frame-wrap {
+        overflow-x: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="/">← Back to Arcade</a>
+    <h1 id="gameTitle">Loading...</h1>
+    <div id="gameSlug" class="muted"></div>
+  </div>
+
+  <div class="layout">
+    <div class="game-shell">
+      <div class="game-frame-wrap">
+        <iframe id="gameFrame" src="" title="Game"></iframe>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="card">
+        <h2>Latest Run</h2>
+        <div class="muted">Last score reported by this game:</div>
+        <div class="score" id="latestScore">—</div>
+      </div>
+
+      <div class="card">
+        <h2>How It Works</h2>
+        <div class="muted">
+          This page is the shared arcade wrapper. Every game can plug into this layout and automatically get navigation, side panels, and score reporting.
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Leaderboard</h2>
+        <ul id="leaderboard">
+          <li>No scores yet</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const GAMES = {
+      "mission-artemis": {
+        title: "Mission Artemis",
+        src: "/games/mission-artemis/index.html"
+      }
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    const gameSlug = params.get("game");
+
+    const game = GAMES[gameSlug];
+
+    if (!game) {
+      document.getElementById("gameTitle").textContent = "Game not found";
+      document.getElementById("gameSlug").textContent = "";
+    } else {
+      document.title = `${game.title} | Arcade`;
+      document.getElementById("gameTitle").textContent = game.title;
+      document.getElementById("gameSlug").textContent = gameSlug;
+      document.getElementById("gameFrame").src = game.src;
+    }
+
+    window.addEventListener("message", async (event) => {
+      const data = event.data;
+
+      if (!data || data.type !== "GAME_OVER") return;
+
+      document.getElementById("latestScore").textContent = data.score ?? 0;
+
+      try {
+        const res = await fetch("/api/scores/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            gameId: data.gameId,
+            playerName: "Guest",
+            score: data.score,
+            stats: data.stats || {}
+          })
+        });
+
+        const result = await res.json();
+        renderLeaderboard(result.leaderboard || []);
+      } catch (err) {
+        console.error("Score submit failed", err);
+      }
+    });
+
+    async function loadLeaderboard() {
+      if (!gameSlug) return;
+      try {
+        const res = await fetch(`/api/leaderboards/${gameSlug}`);
+        const data = await res.json();
+        renderLeaderboard(data.leaderboard || []);
+      } catch (err) {
+        console.error("Leaderboard load failed", err);
+      }
+    }
+
+    function renderLeaderboard(items) {
+      const el = document.getElementById("leaderboard");
+      if (!items.length) {
+        el.innerHTML = "<li>No scores yet</li>";
+        return;
+      }
+
+      el.innerHTML = items
+        .slice(0, 10)
+        .map((item, index) => `<li>#${index + 1} ${item.playerName} — ${item.score}</li>`)
+        .join("");
+    }
+
+    loadLeaderboard();
+  </script>
+</body>
+</html>

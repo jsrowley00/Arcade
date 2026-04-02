@@ -32,6 +32,10 @@ app.get("/leaderboards", (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "leaderboards.html"));
 });
 
+app.get("/play", (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "play.html"));
+});
+
 app.get("/tournaments", (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "tournaments.html"));
 });

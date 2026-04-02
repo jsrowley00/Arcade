@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tournaments | Online Arcade</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="/">ONLINE <span>ARCADE</span></a>
+      <div class="menu">
+        <a href="/games">Games</a>
+        <a href="/leaderboards">Leaderboards</a>
+        <a href="/tournaments">Tournaments</a>
+      </div>
+    </div>
+  </nav>
+  <main class="container">
+    <section class="page-head">
+      <h1>Tournaments</h1>
+      <p>Start with async score-based tournaments. Real-time multiplayer can come later.</p>
+    </section>
+    <section class="grid" id="tournaments-list"></section>
+  </main>
+  <script src="/js/app.js"></script>
+  <script>ArcadeApp.loadTournamentsPage().catch(console.error);</script>
+</body>
+</html>

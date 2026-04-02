@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play | Online Arcade</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+  <style>
+    .play-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start}
+    .play-shell,.play-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+    .play-shell{padding:18px}
+    .play-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+    .play-back{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:#9ad0ff;font-weight:700}
+    .play-frame-wrap{display:flex;justify-content:center}
+    .play-frame{width:420px;height:680px;border:none;border-radius:16px;background:#000;box-shadow:0 0 50px rgba(0,0,0,.35)}
+    .play-sidebar{display:grid;gap:18px}
+    .play-card{padding:18px}
+    .play-card h3{margin:0 0 10px}
+    .play-stat{font-size:32px;font-weight:800;color:#ffd166}
+    .play-list{display:grid;gap:10px}
+    .play-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+    .play-row:last-child{border-bottom:none}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.07);font-size:12px;color:rgba(255,255,255,.8)}
+    @media (max-width: 980px){.play-layout{grid-template-columns:1fr}.play-sidebar{order:-1}.play-frame-wrap{overflow:auto;justify-content:flex-start}}
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="/">ONLINE <span>ARCADE</span></a>
+      <div class="menu">
+        <a href="/games">Games</a>
+        <a href="/leaderboards">Leaderboards</a>
+        <a href="/tournaments">Tournaments</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <section class="page-head">
+      <div class="play-toolbar">
+        <div>
+          <a class="play-back" href="/games">← Back to Arcade</a>
+          <h1 id="gameTitle" style="margin-top:10px;">Loading game…</h1>
+          <p id="gameDescription" class="muted" style="margin-top:8px;">Preparing launch bay.</p>
+        </div>
+        <div class="pill mono" id="gameSlug">—</div>
+      </div>
+    </section>
+
+    <section class="play-layout">
+      <div class="play-shell">
+        <div class="play-frame-wrap">
+          <iframe id="gameFrame" class="play-frame" src="" title="Game frame"></iframe>
+        </div>
+      </div>
+
+      <aside class="play-sidebar">
+        <section class="play-card">
+          <h3>Latest Run</h3>
+          <div class="muted">Most recent score reported by the active game.</div>
+          <div id="latestScore" class="play-stat">—</div>
+          <div id="latestMeta" class="muted" style="margin-top:8px;"></div>
+        </section>
+
+        <section class="play-card">
+          <h3>Top Scores</h3>
+          <div id="leaderboardList" class="play-list">
+            <div class="muted">Loading leaderboard…</div>
+          </div>
+        </section>
+
+        <section class="play-card">
+          <h3>Wrapper Benefits</h3>
+          <div class="muted">
+            Every game loaded here automatically gets shared navigation, a place for leaderboards, and a score-reporting hook back into the arcade host.
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const gameSlug = params.get('game');
+    const frame = document.getElementById('gameFrame');
+    const titleEl = document.getElementById('gameTitle');
+    const descEl = document.getElementById('gameDescription');
+    const slugEl = document.getElementById('gameSlug');
+    const scoreEl = document.getElementById('latestScore');
+    const metaEl = document.getElementById('latestMeta');
+    const leaderboardEl = document.getElementById('leaderboardList');
+
+    async function fetchJson(url, options) {
+      const res = await fetch(url, options);
+      if (!res.ok) throw new Error(await res.text() || `Request failed: ${res.status}`);
+      return res.json();
+    }
+
+    async function init() {
+      if (!gameSlug) {
+        titleEl.textContent = 'Game not found';
+        descEl.textContent = 'No game slug was provided.';
+        leaderboardEl.innerHTML = '<div class="muted">Choose a game from the arcade library.</div>';
+        return;
+      }
+
+      const game = await fetchJson(`/api/games/${encodeURIComponent(gameSlug)}`);
+      titleEl.textContent = game.title;
+      descEl.textContent = game.description || 'Ready to play.';
+      slugEl.textContent = game.slug;
+      frame.src = `/games/${game.slug}/index.html`;
+      document.title = `${game.title} | Online Arcade`;
+      await loadLeaderboard(game.slug);
+    }
+
+    async function loadLeaderboard(slug) {
+      const data = await fetchJson(`/api/scores?gameId=${encodeURIComponent(slug)}`);
+      renderLeaderboard(data.scores || []);
+    }
+
+    function renderLeaderboard(items) {
+      if (!items.length) {
+        leaderboardEl.innerHTML = '<div class="muted">No scores yet.</div>';
+        return;
+      }
+
+      leaderboardEl.innerHTML = items.slice(0, 8).map((item, index) => `
+        <div class="play-row">
+          <div>
+            <div><b>#${index + 1}</b> ${escapeHtml(item.playerName)}</div>
+            <div class="muted mono">${new Date(item.createdAt).toLocaleString()}</div>
+          </div>
+          <div><b>${escapeHtml(item.score)}</b></div>
+        </div>
+      `).join('');
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    window.addEventListener('message', async (event) => {
+      const data = event.data;
+      if (!data || data.type !== 'GAME_OVER') return;
+      scoreEl.textContent = data.score ?? 0;
+
+      const stats = data.stats || {};
+      const metaParts = [];
+      if (stats.result) metaParts.push(`Result: ${stats.result}`);
+      if (typeof stats.planetsReached !== 'undefined') metaParts.push(`Planets: ${stats.planetsReached}`);
+      if (typeof stats.altitude !== 'undefined') metaParts.push(`Altitude: ${stats.altitude}`);
+      metaEl.textContent = metaParts.join(' · ');
+
+      try {
+        await fetchJson('/api/scores/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            gameId: data.gameId,
+            playerName: 'Guest',
+            score: data.score,
+            metadata: data.stats || {}
+          })
+        });
+        await loadLeaderboard(data.gameId);
+      } catch (error) {
+        console.error('Failed to submit score', error);
+      }
+    });
+
+    init().catch((error) => {
+      console.error(error);
+      titleEl.textContent = 'Unable to load game';
+      descEl.textContent = 'Check the game slug or server routes.';
+      leaderboardEl.innerHTML = '<div class="muted">Could not load leaderboard.</div>';
+    });
+  </script>
+</body>
+</html>

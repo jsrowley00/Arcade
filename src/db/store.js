@@ -16,6 +16,16 @@ const defaultData = {
       thumbnail: "🚀",
       scoringType: "high-score",
       status: "published"
+    },
+    {
+      id: "diamond-blaster",
+      title: "Diamond Blaster",
+      slug: "diamond-blaster",
+      description: "Time your swing and blast for the fences — arcade baseball!",
+      path: "/play.html?game=diamond-blaster",
+      thumbnail: "⚾",
+      scoringType: "high-score",
+      status: "published"
     }
   ],
   scores: [

@@ -9,85 +9,92 @@
 <body>
   <nav class="nav">
     <div class="container nav-inner">
-      <a class="brand" href="/">ONLINE <span>ARCADE</span></a>
+      <a class="brand" href="/"><div class="brand-icon">🕹</div>ONLINE <span>ARCADE</span></a>
       <div class="menu">
         <a href="/games">Games</a>
         <a href="/leaderboards">Leaderboards</a>
         <a href="/tournaments">Tournaments</a>
+        <button class="nav-user-btn" id="nav-user-btn">Log In</button>
       </div>
     </div>
   </nav>
 
   <main class="container">
-    <section class="hero">
-      <div class="hero-card">
-        <div class="badge">Arcade platform starter</div>
-        <h1>Host games. Track scores. Run tournaments.</h1>
-        <p>
-          This is your starter shell for a plug-in arcade platform. Add games into the
-          <code>/public/games</code> folder, keep score submissions through one API, and expand into profiles,
-          seasons, and admin tools later.
-        </p>
+    <section class="hero fade-up">
+      <div>
+        <div class="hero-eyebrow">Arcade Platform</div>
+        <h1>Play. Compete.<br>Dominate.</h1>
+        <p class="hero-sub">Pick a username, play games, and fight for the top of the leaderboard.</p>
         <div class="btn-row">
-          <a class="btn primary" href="/games">Browse games</a>
-          <a class="btn secondary" href="/leaderboards">View leaderboards</a>
+          <a class="btn primary" href="/games">Browse Games</a>
+          <a class="btn secondary" href="/leaderboards">Leaderboards</a>
         </div>
         <div class="kpis">
-          <div class="kpi"><b data-kpi="games">0</b><span>Games</span></div>
-          <div class="kpi"><b data-kpi="scores">0</b><span>Score entries</span></div>
-          <div class="kpi"><b data-kpi="tournaments">0</b><span>Tournaments</span></div>
+          <div class="kpi"><b data-kpi="games">—</b><span>Games</span></div>
+          <div class="kpi"><b data-kpi="scores">—</b><span>Score entries</span></div>
+          <div class="kpi"><b data-kpi="tournaments">—</b><span>Tournaments</span></div>
         </div>
       </div>
-      <aside class="panel" style="padding:24px;">
-        <h3 style="margin-top:0;">Starter architecture</h3>
-        <div class="list">
-          <div class="list-row"><div>Arcade shell</div><div>✅</div></div>
-          <div class="list-row"><div>Game library</div><div>✅</div></div>
-          <div class="list-row"><div>Score API</div><div>✅</div></div>
-          <div class="list-row"><div>Tournament API</div><div>✅</div></div>
-          <div class="list-row"><div>Mission Artemis installed</div><div>🚀</div></div>
+      <aside class="hero-panel fade-up-2">
+        <p class="hero-panel-title">Platform status</p>
+        <div class="arch-list">
+          <div class="arch-row"><span>Arcade shell</span><span class="text-green">✓ Live</span></div>
+          <div class="arch-row"><span>Game library API</span><span class="text-green">✓ Live</span></div>
+          <div class="arch-row"><span>Score API</span><span class="text-green">✓ Live</span></div>
+          <div class="arch-row"><span>Tournament API</span><span class="text-green">✓ Live</span></div>
+          <div class="arch-row"><span>Mission Artemis</span><span>🚀 Installed</span></div>
+        </div>
+        <div style="margin-top:18px;">
+          <button class="btn accent" style="width:100%;justify-content:center;" id="hero-login-btn">Set Your Username →</button>
         </div>
       </aside>
     </section>
 
-    <section class="section">
+    <section class="section fade-up-3">
       <div class="section-header">
-        <div>
-          <h2>Featured games</h2>
-          <p>Each game can plug into the shared arcade shell.</p>
-        </div>
+        <div><h2>Featured Games</h2><p>Jump in and start playing</p></div>
+        <a class="btn secondary sm" href="/games">View all →</a>
       </div>
-      <div class="grid" id="featured-games"></div>
-    </section>
-
-    <section class="section">
-      <div class="section-header">
-        <div>
-          <h2>Top scores</h2>
-          <p>Current high scores from the arcade API.</p>
-        </div>
-      </div>
-      <div class="panel" style="padding:18px;">
-        <div class="list" id="home-leaderboard"></div>
+      <div class="grid" id="featured-games">
+        <div class="empty"><div class="empty-icon">🎮</div><p>Loading games…</p></div>
       </div>
     </section>
 
     <section class="section">
       <div class="section-header">
-        <div>
-          <h2>Active tournaments</h2>
-          <p>Start simple with asynchronous weekly competitions.</p>
-        </div>
+        <div><h2>Top Scores</h2><p>High scores across all games</p></div>
+        <a class="btn secondary sm" href="/leaderboards">Full board →</a>
       </div>
-      <div class="grid" id="home-tournaments"></div>
+      <div class="panel" style="padding:12px 8px;">
+        <div class="list" id="home-leaderboard"><div class="list-row muted">Loading…</div></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <div><h2>Active Tournaments</h2><p>Compete for the top spot</p></div>
+        <a class="btn secondary sm" href="/tournaments">View all →</a>
+      </div>
+      <div class="grid" id="home-tournaments">
+        <div class="empty"><div class="empty-icon">🏆</div><p>Loading…</p></div>
+      </div>
     </section>
   </main>
 
   <footer class="footer">
-    <div class="container">Built for Railway deployment with Express and static game hosting.</div>
+    <div class="container footer-inner">
+      <span class="footer-brand">🕹 ONLINE ARCADE</span>
+      <span>Built on Railway · Express · Vanilla JS</span>
+    </div>
   </footer>
 
   <script src="/js/app.js"></script>
-  <script>ArcadeApp.loadHome().catch(console.error);</script>
+  <script>
+    ArcadeApp.loadHome().catch(console.error);
+    // Hero login button also opens the modal
+    document.getElementById('hero-login-btn').addEventListener('click', () => {
+      document.getElementById('nav-user-btn').click();
+    });
+  </script>
 </body>
 </html>

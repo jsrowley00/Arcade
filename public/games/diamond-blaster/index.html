@@ -1,16 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Diamond Blaster</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Diamond Blaster</title>
 </head>
 <body>
+
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{width:100%;height:100%;overflow:hidden;background:#0d1f0d;}
-#gr{width:100%;height:100vh;min-height:620px;background:#0d1f0d;position:relative;overflow:hidden;font-family:'Arial Rounded MT Bold',Arial,sans-serif;}
-canvas{position:absolute;top:0;left:0;width:100%;height:100%;}
+#gr{
+  width:680px;height:620px;
+  background:#0d1f0d;position:absolute;
+  top:0;left:0;
+  transform-origin:top left;
+  overflow:hidden;
+  font-family:'Arial Rounded MT Bold',Arial,sans-serif;
+}
+canvas{position:absolute;top:0;left:0;width:680px;height:620px;}
 #ui{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
 #hud{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 12px;gap:6px;}
 .hp{background:rgba(0,0,0,0.7);border-radius:10px;padding:4px 12px;text-align:center;min-width:58px;}
@@ -145,9 +153,16 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%;}
 const root=document.getElementById('gr');
 const canvas=document.getElementById('c');
 const ctx=canvas.getContext('2d');
-let W,H;
-function resize(){W=canvas.width=root.clientWidth||680;H=canvas.height=620;}
+const W=680,H=620;
+canvas.width=W;canvas.height=H;
+function resize(){
+  const sx=window.innerWidth/W,sy=window.innerHeight/H,sc=Math.min(sx,sy);
+  root.style.transform='scale('+sc+')';
+  root.style.left=((window.innerWidth-W*sc)/2)+'px';
+  root.style.top=((window.innerHeight-H*sc)/2)+'px';
+}
 resize();
+window.addEventListener('resize',resize);
 
 let leaderboard=[],pendingEntry=null,initials=['A','A','A'],activeInitial=0;
 const ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -426,22 +441,17 @@ function endGame(){
   if(score>best) best=score;
 
   // ── ARCADE INTEGRATION ──────────────────────────────
-  // Send score to the arcade wrapper (play.html listens for this)
   try {
     window.parent.postMessage({
-      type: 'GAME_OVER',
-      gameId: 'diamond-blaster',
-      score: score,
-      stats: { runs: runs, hits: hits, atBats: atBats, result: 'game over' }
-    }, '*');
-  } catch(e) {}
+      type:'GAME_OVER',gameId:'diamond-blaster',score:score,
+      stats:{runs:runs,hits:hits,atBats:atBats,result:'game over'}
+    },'*');
+  } catch(e){}
 
-  // If running inside the arcade and player is logged in, use their username
-  // instead of the 3-letter initials screen
-  const arcadeUsername = _getArcadeUsername();
-  if(arcadeUsername) {
-    // Auto-submit with arcade username, skip initials screen
-    leaderboard.push({initials: arcadeUsername.slice(0,8), score, runs, hits, isNew: true});
+  // Use arcade username if logged in, skip initials screen
+  const arcadeUser=_getArcadeUsername();
+  if(arcadeUser){
+    leaderboard.push({initials:arcadeUser.slice(0,8),score,runs,hits,isNew:true});
     leaderboard.sort((a,b)=>b.score-a.score);
     if(leaderboard.length>5) leaderboard.length=5;
     showLeaderboard();
@@ -450,15 +460,8 @@ function endGame(){
     else showLeaderboard();
   }
 }
-
-// Get the logged-in arcade username from the parent window's localStorage
-// Falls back to null if not in arcade or not logged in
 function _getArcadeUsername(){
-  try {
-    // If embedded in arcade iframe, try to read from localStorage
-    // (same origin only — works since game is served from same domain)
-    return localStorage.getItem('arcade_username') || null;
-  } catch(e) { return null; }
+  try{return localStorage.getItem('arcade_username')||null;}catch(e){return null;}
 }
 
 // ── DRAW ──────────────────────────────────────────────

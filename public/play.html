@@ -5,34 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play | Online Arcade</title>
   <link rel="stylesheet" href="/css/styles.css" />
-  <style>
-    .play-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start}
-    .play-shell,.play-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
-    .play-shell{padding:18px}
-    .play-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
-    .play-back{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:#9ad0ff;font-weight:700}
-    .play-frame-wrap{display:flex;justify-content:center}
-    .play-frame{width:420px;height:680px;border:none;border-radius:16px;background:#000;box-shadow:0 0 50px rgba(0,0,0,.35)}
-    .play-sidebar{display:grid;gap:18px}
-    .play-card{padding:18px}
-    .play-card h3{margin:0 0 10px}
-    .play-stat{font-size:32px;font-weight:800;color:#ffd166}
-    .play-list{display:grid;gap:10px}
-    .play-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08)}
-    .play-row:last-child{border-bottom:none}
-    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
-    .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.07);font-size:12px;color:rgba(255,255,255,.8)}
-    @media (max-width: 980px){.play-layout{grid-template-columns:1fr}.play-sidebar{order:-1}.play-frame-wrap{overflow:auto;justify-content:flex-start}}
-  </style>
 </head>
 <body>
   <nav class="nav">
     <div class="container nav-inner">
-      <a class="brand" href="/">ONLINE <span>ARCADE</span></a>
+      <a class="brand" href="/"><div class="brand-icon">🕹</div>ONLINE <span>ARCADE</span></a>
       <div class="menu">
         <a href="/games">Games</a>
         <a href="/leaderboards">Leaderboards</a>
         <a href="/tournaments">Tournaments</a>
+        <button class="nav-user-btn" id="nav-user-btn">Log In</button>
       </div>
     </div>
   </nav>
@@ -42,8 +24,8 @@
       <div class="play-toolbar">
         <div>
           <a class="play-back" href="/games">← Back to Arcade</a>
-          <h1 id="gameTitle" style="margin-top:10px;">Loading game…</h1>
-          <p id="gameDescription" class="muted" style="margin-top:8px;">Preparing launch bay.</p>
+          <h1 id="gameTitle" style="margin:10px 0 4px;">Loading…</h1>
+          <p id="gameDescription" class="muted" style="margin:0;">Preparing launch bay.</p>
         </div>
         <div class="pill mono" id="gameSlug">—</div>
       </div>
@@ -52,36 +34,47 @@
     <section class="play-layout">
       <div class="play-shell">
         <div class="play-frame-wrap">
-          <iframe id="gameFrame" class="play-frame" src="" title="Game frame"></iframe>
+          <iframe id="gameFrame" class="play-frame" src="" title="Game frame" allowfullscreen></iframe>
         </div>
       </div>
 
       <aside class="play-sidebar">
-        <section class="play-card">
+        <section class="play-card" id="score-card">
           <h3>Latest Run</h3>
-          <div class="muted">Most recent score reported by the active game.</div>
-          <div id="latestScore" class="play-stat">—</div>
-          <div id="latestMeta" class="muted" style="margin-top:8px;"></div>
+          <div id="score-logged-in" style="display:none;">
+            <p class="muted" style="margin:0 0 4px;font-size:.85rem;">Playing as <strong id="playing-as"></strong></p>
+            <div id="latestScore" class="play-stat">—</div>
+            <div id="latestMeta" class="muted" style="margin-top:6px;font-size:.85rem;"></div>
+          </div>
+          <div id="score-gate" class="score-gate">
+            <p>Log in to save your scores to the leaderboard.</p>
+            <button class="btn accent sm" id="score-gate-login-btn">Log In / Register →</button>
+          </div>
         </section>
 
         <section class="play-card">
           <h3>Top Scores</h3>
-          <div id="leaderboardList" class="play-list">
-            <div class="muted">Loading leaderboard…</div>
+          <div id="leaderboardList" class="list">
+            <div class="muted" style="font-size:.9rem;">Loading…</div>
           </div>
         </section>
 
         <section class="play-card">
-          <h3>Wrapper Benefits</h3>
-          <div class="muted">
-            Every game loaded here automatically gets shared navigation, a place for leaderboards, and a score-reporting hook back into the arcade host.
-          </div>
+          <h3>About</h3>
+          <p class="muted" style="margin:0;font-size:.88rem;line-height:1.6;">
+            Create an account or log in to have your scores saved. Guests can still play — scores just won't be recorded.
+          </p>
         </section>
       </aside>
     </section>
   </main>
 
+  <script src="/js/app.js"></script>
   <script>
+    // Boot auth system
+    ArcadeApp.loadHome; // just ensure app.js ran
+    boot();
+
     const params = new URLSearchParams(window.location.search);
     const gameSlug = params.get('game');
     const frame = document.getElementById('gameFrame');
@@ -90,96 +83,103 @@
     const slugEl = document.getElementById('gameSlug');
     const scoreEl = document.getElementById('latestScore');
     const metaEl = document.getElementById('latestMeta');
+    const playingAsEl = document.getElementById('playing-as');
     const leaderboardEl = document.getElementById('leaderboardList');
+    const scoreLoggedIn = document.getElementById('score-logged-in');
+    const scoreGate = document.getElementById('score-gate');
 
-    async function fetchJson(url, options) {
-      const res = await fetch(url, options);
-      if (!res.ok) throw new Error(await res.text() || `Request failed: ${res.status}`);
-      return res.json();
+    function updateScorePanel() {
+      const loggedIn = User.isLoggedIn();
+      scoreLoggedIn.style.display = loggedIn ? '' : 'none';
+      scoreGate.style.display = loggedIn ? 'none' : '';
+      if (loggedIn && playingAsEl) playingAsEl.textContent = User.getUsername();
     }
+
+    // Gate login button
+    document.getElementById('score-gate-login-btn').addEventListener('click', () => {
+      document.getElementById('nav-user-btn')?.click();
+    });
+
+    // Re-check panel when user logs in or out
+    window.addEventListener('arcade:login', updateScorePanel);
+    window.addEventListener('arcade:logout', updateScorePanel);
 
     async function init() {
       if (!gameSlug) {
-        titleEl.textContent = 'Game not found';
-        descEl.textContent = 'No game slug was provided.';
-        leaderboardEl.innerHTML = '<div class="muted">Choose a game from the arcade library.</div>';
+        titleEl.textContent = 'No game selected';
+        descEl.textContent = 'Choose a game from the arcade library.';
         return;
       }
-
-      const game = await fetchJson(`/api/games/${encodeURIComponent(gameSlug)}`);
+      const res = await fetch(`/api/games/${encodeURIComponent(gameSlug)}`);
+      if (!res.ok) throw new Error('Game not found');
+      const game = await res.json();
       titleEl.textContent = game.title;
       descEl.textContent = game.description || 'Ready to play.';
       slugEl.textContent = game.slug;
       frame.src = `/games/${game.slug}/index.html`;
       document.title = `${game.title} | Online Arcade`;
+      updateScorePanel();
       await loadLeaderboard(game.slug);
     }
 
     async function loadLeaderboard(slug) {
-      const data = await fetchJson(`/api/scores?gameId=${encodeURIComponent(slug)}`);
-      renderLeaderboard(data.scores || []);
-    }
-
-    function renderLeaderboard(items) {
+      const res = await fetch(`/api/scores?gameId=${encodeURIComponent(slug)}`);
+      const data = await res.json();
+      const items = data.scores || [];
       if (!items.length) {
-        leaderboardEl.innerHTML = '<div class="muted">No scores yet.</div>';
+        leaderboardEl.innerHTML = '<div class="muted" style="font-size:.88rem;">No scores yet — be the first!</div>';
         return;
       }
-
-      leaderboardEl.innerHTML = items.slice(0, 8).map((item, index) => `
+      leaderboardEl.innerHTML = items.slice(0, 8).map((item, i) => `
         <div class="play-row">
           <div>
-            <div><b>#${index + 1}</b> ${escapeHtml(item.playerName)}</div>
-            <div class="muted mono">${new Date(item.createdAt).toLocaleString()}</div>
+            <span class="rank ${i < 3 ? 'top' : ''}">#${i+1}</span>
+            <span style="margin-left:6px;">${esc(item.playerName)}</span>
+            <div class="muted mono" style="font-size:.75rem;margin-top:2px;">${new Date(item.createdAt).toLocaleDateString()}</div>
           </div>
-          <div><b>${escapeHtml(item.score)}</b></div>
+          <span class="score-val">${esc(item.score)}</span>
         </div>
       `).join('');
-    }
-
-    function escapeHtml(value) {
-      return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
     }
 
     window.addEventListener('message', async (event) => {
       const data = event.data;
       if (!data || data.type !== 'GAME_OVER') return;
-      scoreEl.textContent = data.score ?? 0;
 
+      if (!User.isLoggedIn()) {
+        updateScorePanel(); // show gate
+        return;
+      }
+
+      scoreEl.textContent = data.score ?? 0;
       const stats = data.stats || {};
-      const metaParts = [];
-      if (stats.result) metaParts.push(`Result: ${stats.result}`);
-      if (typeof stats.planetsReached !== 'undefined') metaParts.push(`Planets: ${stats.planetsReached}`);
-      if (typeof stats.altitude !== 'undefined') metaParts.push(`Altitude: ${stats.altitude}`);
-      metaEl.textContent = metaParts.join(' · ');
+      const parts = [];
+      if (stats.result) parts.push(`Result: ${stats.result}`);
+      if (stats.planetsReached != null) parts.push(`Planets: ${stats.planetsReached}`);
+      if (stats.altitude != null) parts.push(`Altitude: ${stats.altitude}`);
+      metaEl.textContent = parts.join(' · ');
 
       try {
-        await fetchJson('/api/scores/submit', {
+        const res = await fetch('/api/scores/submit', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            gameId: data.gameId,
-            playerName: 'Guest',
-            score: data.score,
-            metadata: data.stats || {}
-          })
+          headers: {
+            'Content-Type': 'application/json',
+            'x-arcade-token': User.getToken()
+          },
+          body: JSON.stringify({ gameId: data.gameId, score: data.score, metadata: data.stats || {} })
         });
-        await loadLeaderboard(data.gameId);
-      } catch (error) {
-        console.error('Failed to submit score', error);
-      }
+        if (res.ok) await loadLeaderboard(data.gameId);
+      } catch(e) { console.error('Score submit failed', e); }
     });
 
-    init().catch((error) => {
-      console.error(error);
+    function esc(v) {
+      return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
+
+    init().catch(e => {
+      console.error(e);
       titleEl.textContent = 'Unable to load game';
       descEl.textContent = 'Check the game slug or server routes.';
-      leaderboardEl.innerHTML = '<div class="muted">Could not load leaderboard.</div>';
     });
   </script>
 </body>

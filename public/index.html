@@ -36,16 +36,16 @@
         </div>
       </div>
       <aside class="hero-panel fade-up-2">
-        <p class="hero-panel-title">Platform status</p>
+        <p class="hero-panel-title">How to play</p>
         <div class="arch-list">
-          <div class="arch-row"><span>Arcade shell</span><span class="text-green">✓ Live</span></div>
-          <div class="arch-row"><span>Game library API</span><span class="text-green">✓ Live</span></div>
-          <div class="arch-row"><span>Score API</span><span class="text-green">✓ Live</span></div>
-          <div class="arch-row"><span>Tournament API</span><span class="text-green">✓ Live</span></div>
-          <div class="arch-row"><span>Mission Artemis</span><span>🚀 Installed</span></div>
+          <div class="arch-row"><span>1. Create an account</span><span>🕹</span></div>
+          <div class="arch-row"><span>2. Pick a game</span><span>🎮</span></div>
+          <div class="arch-row"><span>3. Post your score</span><span>📊</span></div>
+          <div class="arch-row"><span>4. Climb the leaderboard</span><span>🏆</span></div>
+          <div class="arch-row"><span>5. Beat everyone</span><span>👑</span></div>
         </div>
         <div style="margin-top:18px;">
-          <button class="btn accent" style="width:100%;justify-content:center;" id="hero-login-btn">Set Your Username →</button>
+          <button class="btn accent" style="width:100%;justify-content:center;" id="hero-login-btn">Create Account →</button>
         </div>
       </aside>
     </section>
@@ -91,7 +91,6 @@
   <script src="/js/app.js"></script>
   <script>
     ArcadeApp.loadHome().catch(console.error);
-    // Hero login button also opens the modal
     document.getElementById('hero-login-btn').addEventListener('click', () => {
       document.getElementById('nav-user-btn').click();
     });

@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 const DATA_DIR = path.join(__dirname, "..", "..", "data");
 const DB_FILE = path.join(DATA_DIR, "arcade-data.json");
@@ -45,25 +46,25 @@ const defaultData = {
       startAt: new Date().toISOString(),
       endAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
     }
-  ]
+  ],
+  users: [],
+  sessions: []
 };
 
 function ensureDb() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-  if (!fs.existsSync(DB_FILE)) {
-    fs.writeFileSync(DB_FILE, JSON.stringify(defaultData, null, 2));
-  }
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (!fs.existsSync(DB_FILE)) fs.writeFileSync(DB_FILE, JSON.stringify(defaultData, null, 2));
 }
 
 function readDb() {
   ensureDb();
   try {
-    const raw = fs.readFileSync(DB_FILE, "utf8");
-    return JSON.parse(raw);
-  } catch (error) {
-    console.error("Failed to read DB, resetting:", error);
+    const data = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
+    if (!data.users) data.users = [];
+    if (!data.sessions) data.sessions = [];
+    return data;
+  } catch (err) {
+    console.error("Failed to read DB, resetting:", err);
     fs.writeFileSync(DB_FILE, JSON.stringify(defaultData, null, 2));
     return JSON.parse(JSON.stringify(defaultData));
   }
@@ -74,17 +75,114 @@ function writeDb(data) {
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 }
 
-function getGames() {
-  return readDb().games;
+// ── Password hashing (Node built-in crypto, no extra deps) ──
+
+function hashPassword(password, salt) {
+  return new Promise((resolve, reject) => {
+    const s = salt || crypto.randomBytes(16).toString("hex");
+    crypto.pbkdf2(password, s, 100_000, 64, "sha512", (err, key) => {
+      if (err) return reject(err);
+      resolve({ hash: key.toString("hex"), salt: s });
+    });
+  });
 }
 
-function getGameBySlug(slug) {
-  return readDb().games.find((game) => game.slug === slug) || null;
+function verifyPassword(password, hash, salt) {
+  return new Promise((resolve, reject) => {
+    crypto.pbkdf2(password, salt, 100_000, 64, "sha512", (err, key) => {
+      if (err) return reject(err);
+      resolve(crypto.timingSafeEqual(Buffer.from(hash, "hex"), key));
+    });
+  });
 }
+
+function generateToken() {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+// ── Auth ─────────────────────────────────────────────────────
+
+async function registerUser(username, password) {
+  const db = readDb();
+  if (db.users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
+    throw new Error("Username already taken");
+  }
+  const { hash, salt } = await hashPassword(password);
+  const user = {
+    id: `user-${Date.now()}`,
+    username,
+    passwordHash: hash,
+    passwordSalt: salt,
+    createdAt: new Date().toISOString()
+  };
+  db.users.push(user);
+  const token = generateToken();
+  db.sessions.push({ token, userId: user.id, createdAt: new Date().toISOString() });
+  writeDb(db);
+  return { token, user: { id: user.id, username: user.username } };
+}
+
+async function loginUser(username, password) {
+  const db = readDb();
+  const user = db.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+  if (!user) throw new Error("Invalid username or password");
+  const valid = await verifyPassword(password, user.passwordHash, user.passwordSalt);
+  if (!valid) throw new Error("Invalid username or password");
+  const token = generateToken();
+  db.sessions.push({ token, userId: user.id, createdAt: new Date().toISOString() });
+  writeDb(db);
+  return { token, user: { id: user.id, username: user.username } };
+}
+
+function logoutUser(token) {
+  const db = readDb();
+  db.sessions = db.sessions.filter(s => s.token !== token);
+  writeDb(db);
+}
+
+function getUserByToken(token) {
+  if (!token) return null;
+  const db = readDb();
+  const session = db.sessions.find(s => s.token === token);
+  if (!session) return null;
+  const user = db.users.find(u => u.id === session.userId);
+  return user ? { id: user.id, username: user.username } : null;
+}
+
+// ── Games ─────────────────────────────────────────────────────
+
+function getGames() { return readDb().games; }
+
+function getGameBySlug(slug) {
+  return readDb().games.find(g => g.slug === slug) || null;
+}
+
+function addGame(entry) {
+  const db = readDb();
+  const slug = String(entry.slug || "").toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 40);
+  if (!slug) throw new Error("Invalid slug");
+  if (db.games.find(g => g.slug === slug)) throw new Error("A game with that slug already exists");
+  const newGame = {
+    id: slug,
+    title: String(entry.title || "Untitled").slice(0, 60),
+    slug,
+    description: String(entry.description || "").slice(0, 300),
+    path: String(entry.path || `/play.html?game=${slug}`).slice(0, 300),
+    thumbnail: String(entry.thumbnail || "🎮").slice(0, 8),
+    scoringType: String(entry.scoringType || "high-score"),
+    status: String(entry.status || "published"),
+    createdAt: new Date().toISOString()
+  };
+  db.games.push(newGame);
+  writeDb(db);
+  return newGame;
+}
+
+// ── Scores ────────────────────────────────────────────────────
 
 function getScores(gameId) {
   const db = readDb();
-  const scores = gameId ? db.scores.filter((score) => score.gameId === gameId) : db.scores;
+  const scores = gameId ? db.scores.filter(s => s.gameId === gameId) : db.scores;
   return scores.sort((a, b) => b.score - a.score || new Date(a.createdAt) - new Date(b.createdAt));
 }
 
@@ -103,13 +201,13 @@ function addScore(entry) {
   return newEntry;
 }
 
-function getTournaments() {
-  return readDb().tournaments;
-}
+// ── Tournaments ───────────────────────────────────────────────
+
+function getTournaments() { return readDb().tournaments; }
 
 function addTournament(entry) {
   const db = readDb();
-  const newTournament = {
+  const t = {
     id: `tournament-${Date.now()}`,
     title: entry.title,
     gameId: entry.gameId,
@@ -118,16 +216,14 @@ function addTournament(entry) {
     startAt: entry.startAt || new Date().toISOString(),
     endAt: entry.endAt || null
   };
-  db.tournaments.push(newTournament);
+  db.tournaments.push(t);
   writeDb(db);
-  return newTournament;
+  return t;
 }
 
 module.exports = {
-  getGames,
-  getGameBySlug,
-  getScores,
-  addScore,
-  getTournaments,
-  addTournament
+  registerUser, loginUser, logoutUser, getUserByToken,
+  getGames, getGameBySlug, addGame,
+  getScores, addScore,
+  getTournaments, addTournament
 };

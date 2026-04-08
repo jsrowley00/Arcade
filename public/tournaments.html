@@ -9,21 +9,26 @@
 <body>
   <nav class="nav">
     <div class="container nav-inner">
-      <a class="brand" href="/">ONLINE <span>ARCADE</span></a>
+      <a class="brand" href="/"><div class="brand-icon">🕹</div>ONLINE <span>ARCADE</span></a>
       <div class="menu">
         <a href="/games">Games</a>
         <a href="/leaderboards">Leaderboards</a>
         <a href="/tournaments">Tournaments</a>
+        <button class="nav-user-btn" id="nav-user-btn">Log In</button>
       </div>
     </div>
   </nav>
   <main class="container">
-    <section class="page-head">
-      <h1>Tournaments</h1>
-      <p>Start with async score-based tournaments. Real-time multiplayer can come later.</p>
+    <section class="page-head fade-up">
+      <div><h1>Tournaments</h1><p>Score-based competitions — highest score wins</p></div>
     </section>
-    <section class="grid" id="tournaments-list"></section>
+    <div class="grid fade-up-2" id="tournaments-list">
+      <div class="empty"><div class="empty-icon">🏆</div><p>Loading…</p></div>
+    </div>
   </main>
+  <footer class="footer">
+    <div class="container footer-inner"><span class="footer-brand">🕹 ONLINE ARCADE</span></div>
+  </footer>
   <script src="/js/app.js"></script>
   <script>ArcadeApp.loadTournamentsPage().catch(console.error);</script>
 </body>
